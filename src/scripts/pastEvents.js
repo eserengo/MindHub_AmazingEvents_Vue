@@ -1,14 +1,128 @@
-
 const { createApp } = Vue
 
 const App = createApp({
   data() {
     return {
-      
+      fetchedData: {},
+      filterInput: [],
+      searchInput: [],
     }
   },
+
+  methods: {
+    async fetchData() {
+      try {
+        const res = await fetch("https://mindhub-xj03.onrender.com/api/amazing");
+        if (res.ok) {
+          const json = await res.json();
+          return this.fetchedData = json;
+        }
+        throw new Error(res.status);
+      } catch (err) {
+        return this.fetchedData = { error: err.message };
+      }
+    },
+
+    createEventsCards(inputArray) {
+      document.querySelector(".card-wrapper") && document.querySelectorAll(".card-wrapper").forEach(item => item.remove());
+      if (inputArray && !inputArray.length) {
+        return `<h2 class="msg text-secondary text-center">Sorry, no events were found.</h2>`;
+      }
+      document.querySelector(".msg") && document.querySelector(".msg").remove();
+      return inputArray && inputArray
+        .map(event =>
+          `
+          <div key="${event._id}" class="card-wrapper col-12 col-sm-6 col-md-4 col-lg-3 my-2">
+            <div class="card" style="min-height: 25rem">
+              <figure class="m-0">
+                <img src="${event.image}" alt="${event.category}" class="card-img-top object-fit-cover" style="height: 10rem;">
+              </figure>
+              <div class="card-body d-flex flex-column align-items-stretch justify-content-between">
+                <h2 class="card-title fs-4 text-center">${event.name}</h2>
+                <p class="card-text">${event.description}</p>
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                  <span class="card-text">Price: ${event.price}</span>
+                  <a href="../pages/details.html?id=${event._id}" class="btn btn-outline-danger px-4" data-details="${event._id}">
+                    Details
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        `)
+        .join("")
+    },
+
+    setURLSearchParams(key, value, action) {
+      const url = new URL(window.location.href);
+
+      if (action == "delete") {
+        const entries = url.searchParams.getAll(key).filter(item => item !== value);
+        url.searchParams.delete(key);
+        entries.map(item => url.searchParams.append(key, item));
+      } else if (action == "set") {
+        url.searchParams.delete(key);
+        !value || url.searchParams.set(key, value);
+      } else {
+        url.searchParams.append(key, value);
+      }
+
+      window.history.pushState({ path: url.href }, "", url.href);
+    },
+
+    searching(event) {
+      event.preventDefault();
+      this.searchInput = [];
+      this.searchInput.push(document.getElementById("search-input").value);
+      this.setURLSearchParams("search", document.getElementById("search-input").value, "set");
+    },
+
+    clear() {
+      this.searchInput = [];
+      document.getElementById("search-input").value = "";
+      this.setURLSearchParams("search", null, "set");
+    },
+
+    filtering(event) {
+      this.filterInput.includes(event.target.value)
+        ? (this.filterInput = this.filterInput.filter(subitem => subitem != event.target.value),
+          this.setURLSearchParams("filter", event.target.value, "delete"))
+        : (this.filterInput = [...this.filterInput, event.target.value],
+          this.setURLSearchParams("filter", event.target.value, "append"));
+    },
+  },
+
+  computed: {
+    pastEventsArray() {
+      return this.fetchedData.events.filter(item => item.date <= this.fetchedData.currentDate);
+    },
+
+    filteredData() {
+      return this.pastEventsArray.filter(item => this.filterInput.find(subitem => subitem == item.category) !== undefined);
+    },
+
+    searchedData() {
+      if (!this.filterInput.length) {
+        return this.pastEventsArray.filter(item => {
+          if (item.name.toLowerCase().includes(this.searchInput[0].toLowerCase())) return item;
+        });
+      }
+      return this.filteredData.filter(item => {
+        if (item.name.toLowerCase().includes(this.searchInput[0].toLowerCase())) return item;
+      });
+    },
+
+    categories() {
+      return this.pastEventsArray && Array.from(new Set(this.pastEventsArray.map(item => item.category)));
+    },
+  },
+
+  created() {
+    this.fetchData();
+  },
+
   template: `
-    <header class="p-2">
+  <header class="p-2">
     <nav class="navbar navbar-expand-sm bg-body-tertiary">
       <div class="container-fluid">
         <div class="row w-100 g-0 align-items-center justify-content-between">
@@ -29,17 +143,17 @@ const App = createApp({
                   <a href="../../index.html" class="nav-link fs-6">Home</a>
                 </li>
                 <li class="nav-item">
-                  <a href="./upcomingEvents.html" class="nav-link fs-6">Upcoming Events</a>
+                  <a href="../pages/upcomingEvents.html" class="nav-link fs-6">Upcoming Events</a>
                 </li>
                 <li class="nav-item">
-                  <a href="./pastEvents.html" aria-current="page" class="nav-link active fs-6"
-                    style="color: rgb(214, 0, 100);">Past Events</a>
+                  <a href="../pages/pastEvents.html" aria-current="page"
+                    class="nav-link active fs-6" style="color: rgb(214, 0, 100);">Past Events</a>
                 </li>
                 <li class="nav-item">
-                  <a href="./contact.html" class="nav-link fs-6">Contact</a>
+                  <a href="../pages/contact.html" class="nav-link fs-6">Contact</a>
                 </li>
                 <li class="nav-item">
-                  <a href="./stats.html" class="nav-link fs-6">Stats</a>
+                  <a href="../pages/stats.html" class="nav-link fs-6">Stats</a>
                 </li>
               </ul>
             </div>
@@ -50,7 +164,7 @@ const App = createApp({
 
     <section id="carousel" class="carousel slide position-relative">
       <div class="carousel-inner">
-        <figure class="carousel-item">
+        <figure class="carousel-item active">
           <img src="../assets/optional_banner_1.jpg" class="d-block w-100 object-fit-cover"
             alt="An image of a sushi dish" style="max-height: 320px;">
         </figure>
@@ -58,7 +172,7 @@ const App = createApp({
           <img src="../assets/optional_banner_2.jpg" class="d-block w-100 object-fit-cover"
             alt="An image of a theather" style="max-height: 320px;">
         </figure>
-        <figure class="carousel-item active">
+        <figure class="carousel-item">
           <img src="../assets/optional_banner_3.jpg" class="d-block w-100 object-fit-cover"
             alt="An image of a cathedral inside" style="max-height: 320px;">
         </figure>
@@ -67,8 +181,8 @@ const App = createApp({
             alt="An image of party lights" style="max-height: 320px;">
         </figure>
         <figure class="carousel-item">
-          <img src="../assets/optional_banner_5.jpg" class="d-block w-100 object-fit-cover" alt="An image of a mic"
-            style="max-height: 320px;">
+          <img src="../assets/optional_banner_5.jpg" class="d-block w-100 object-fit-cover"
+            alt="An image of a mic" style="max-height: 320px;">
         </figure>
       </div>
       <button class="carousel-control-prev" type="button" data-bs-target="#carousel" data-bs-slide="prev">
@@ -85,16 +199,22 @@ const App = createApp({
   </header>
 
   <main>
-    <nav class="navbar d-none" id="pastEventsNavBar">
+    <nav v-if="this.fetchedData.events" class="navbar">
       <div class="container-fluid">
         <div class="row w-100 d-flex flex-row align-items-center justify-content-between">
           <div class="col-6 col-md-8">
 
-            <!-- Este es el elemento dentro del cual voy a generar las categorias de los eventos de forma dinamica -->
-            <form class="d-flex flex-column flex-sm-row flex-wrap align-items-sm-start align-items-sm-center gap-1 gap-sm-3"
+          <!-- Este es el elemento dentro del cual voy a generar las categorias de los eventos de forma dinamica -->
+            <form
+              class="d-flex flex-column flex-sm-row flex-wrap align-items-sm-start align-items-sm-center gap-1 gap-sm-3"
               action="#">
-              <fieldset id="pastEventsCategoriesContainer">
+              <fieldset>
                 <legend class="fs-6 text-secondary">Filter events by category</legend>
+                <div v-for="(category, index) of categories" class="form-check form-check-inline" :key="index">
+                  <input type="checkbox" class="form-check-input" :id="category" :value="category" name="$categories"
+                    role="button" @click="filtering">
+                  <label :for="category" class="form-check-label">{{ category }}</label>
+                </div>
               </fieldset>
             </form>
 
@@ -104,20 +224,30 @@ const App = createApp({
             <form class="d-flex flex-column flex-sm-row" action="#" role="search">
               <input class="form-control mb-2 me-sm-2 mb-sm-0" type="search" id="search-input" placeholder="Search events by name"
                 aria-label="Search">
-              <button class="btn btn-outline-danger" type="submit" id="submit-input">Search</button>
+              <button class="btn btn-outline-danger" type="submit" @click="searching">Search</button>
             </form>
-            <button class="btn btn-outline-secondary text-center float-end mt-2" id="clear-btn">clear search</button>
+            <button class="btn btn-outline-secondary text-center float-end mt-2" @click="clear">clear search</button>
           </div>
         </div>
       </div>
     </nav>
 
-    <div class="container-fluid p-2">
+    <!-- Este es el elemento dentro del cual voy a generar las tarjetas de los eventos de forma dinamica -->
+    <div v-if="this.fetchedData.events" class="container-fluid p-2">
 
-      <!-- Este es el elemento dentro del cual voy a generar las tarjetas de los eventos de forma dinamica -->
-      <div class="row w-100" id="pastEventsCardsContainer"></div>
+      <div v-if="!this.filterInput.length && !this.searchInput.length"
+        class="row w-100" v-html="this.createEventsCards(pastEventsArray)"></div>
 
+      <div v-else-if="this.filterInput.length && !this.searchInput.length"
+        class="row w-100" v-html="this.createEventsCards(this.filteredData)"></div>
+
+      <div v-else class="row w-100" v-html="this.createEventsCards(this.searchedData)"></div>
     </div>
+
+    <div v-else class="container-fluid p-2">
+      <h2 v-for="(value, key, index) in this.fetchedData" :key="index" class="text-center text-danger">{{ key }} {{ value }}</h2>
+    </div>
+
   </main>
 
   <footer class="p-2">
@@ -153,4 +283,4 @@ const App = createApp({
       </div>
     </nav>
   </footer>`
-}).mount('#app')
+}).mount("#app")

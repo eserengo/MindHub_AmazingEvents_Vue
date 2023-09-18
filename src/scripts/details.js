@@ -4,8 +4,26 @@ const { createApp } = Vue
 const App = createApp({
   data() {
     return {
-      
+      fetchedData: {},
+      params: new URLSearchParams(location.search),
     }
+  },
+  methods: {
+    async fetchData() {
+      try {
+        const res = await fetch("https://mindhub-xj03.onrender.com/api/amazing");
+        if (res.ok) {
+          const json = await res.json();
+          return this.fetchedData = json;
+        }
+        throw new Error(res.status);
+      } catch (err) {
+        return this.fetchedData = { error: err.message };
+      }
+    },
+  },
+  created() {
+    this.fetchData()
   },
   template: `
     <header class="p-2">
@@ -51,7 +69,27 @@ const App = createApp({
   <main>
 
     <!-- Este es el elemento dentro del cual voy a generar la tarjeta de detalles de forma dinámica -->
-    <div class="m-4" id="detailsContainer"></div>
+    <div v-for="(event, index) of fetchedData.events" :key="index" class="m-4" id="detailsContainer">
+      <div v-if="event._id == params.get('id')" class="card">
+          <div class="card-body container-fluid">
+            <div class="row w-100 m-0 d-flex flex-column flex-wrap flex-sm-row">
+              <figure class="col col-sm-12 col-md-6 col-lg-8 m-0">
+                <img :src="event.image" :alt="event.category" class="card-img object-fit-cover h-100">
+              </figure>
+              <div class="col col-sm-12 col-md-6 col-lg-4">
+                <h2 class="card-title fs-4 text-center mt-2 mt-sm-0">{{ event.name }}</h2>
+                <p class="card-text">Date: {{ event.date }}</p>
+                <p class="card-text">Description: {{ event.description }}</p>
+                <p class="card-text">Category: {{ event.category }}</p>
+                <p class="card-text">Place: {{ event.place }}</p>
+                <p class="card-text">Capacity: {{ event.capacity }}</p>
+                <p class="card-text">Assistance or Estimate: {{ event.assistance ? event.assistance : event.estimate }}</p>
+                <p class="card-text">Price: {{ event.price }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
 
   </main>
 
