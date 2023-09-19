@@ -1,14 +1,150 @@
-
 const { createApp } = Vue
 
 const App = createApp({
   data() {
     return {
-      
+      fetchedData: {},  
     }
   },
+
+  methods: {
+    async fetchData() {
+      try {
+        const res = await fetch("https://mindhub-xj03.onrender.com/api/amazing");
+        if (res.ok) {
+          const json = await res.json();
+          return this.fetchedData = json;
+        }
+        throw new Error(res.status);
+      } catch (err) {
+        return this.fetchedData = { error: err.message };
+      }
+    },
+  },
+
+  computed: {
+    pastEventsArray() {
+      return this.fetchedData.events && this.fetchedData.events.filter(item => item.date <= this.fetchedData.currentDate);
+    },
+
+    upcomingEventsArray() {
+      return this.fetchedData.events && this.fetchedData.events.filter(item => item.date > this.fetchedData.currentDate);
+    },
+
+    highestPercentageOfAssistance() {
+      const percentage = (inputItem) => ((parseInt(inputItem.assistance) * 100) / parseInt(inputItem.capacity)).toFixed(2);
+      let highestValue = 0;
+      let highestName = "";
+
+      this.fetchedData.events && this.pastEventsArray
+        .map(item => {
+          if (percentage(item) > highestValue) {
+            highestValue = percentage(item);
+            highestName = item.name;
+          }
+        });
+
+      return `${highestName}: ${highestValue}%`;
+    },
+
+    lowestPercentageOfAssistance() {
+      const percentage = (inputItem) => ((parseInt(inputItem.assistance) * 100) / parseInt(inputItem.capacity)).toFixed(2);
+      let lowestValue = 100;
+      let lowestName = "";
+
+      this.fetchedData.events && this.pastEventsArray
+        .map(item => {
+          if (percentage(item) < lowestValue) {
+            lowestValue = percentage(item);
+            lowestName = item.name;
+          }
+        });
+
+      return `${lowestName}: ${lowestValue}%`;
+    },
+
+    eventWithLargestCapacity() {
+      let largestValue = 0;
+      let largestName = "";
+
+      this.fetchedData.events && this.fetchedData.events
+        .map(item => {
+          if (item.capacity > largestValue) {
+            largestValue = item.capacity;
+            largestName = item.name;
+          }
+        });
+
+      return `${largestName}: ${largestValue.toLocaleString()}`;
+    },
+
+    setPastEventsTable() {
+      const outputArray = [];
+
+      const categories = Array.from(new Set(this.pastEventsArray.map(item => item.category)));
+
+      categories.map(item => {
+
+        const sortByCategory = this.pastEventsArray.filter(event => event.category == item);
+
+        const revenuesPerCategory = sortByCategory
+          .reduce(
+            (acc, event) => acc + event.price * (event.assistance ? event.assistance : event.estimate), 0
+          );
+
+        const percentageOfAssistance = (sortByCategory
+          .reduce(
+            (acc, event) => acc + ((event.assistance ? event.assistance : event.estimate) / event.capacity) * 100, 0
+          ) / sortByCategory.length)
+          .toFixed(2);
+
+        outputArray.push({
+          event: item,
+          revenues: revenuesPerCategory,
+          percentage: percentageOfAssistance,
+        });
+      })
+
+      return outputArray;
+    },
+
+    setUpcomingEventsTable() {
+      const outputArray = [];
+
+      const categories = Array.from(new Set(this.upcomingEventsArray.map(item => item.category)));
+
+      categories.map(item => {
+
+        const sortByCategory = this.upcomingEventsArray.filter(event => event.category == item);
+
+        const revenuesPerCategory = sortByCategory
+          .reduce(
+            (acc, event) => acc + event.price * (event.assistance ? event.assistance : event.estimate), 0
+          );
+
+        const percentageOfAssistance = (sortByCategory
+          .reduce(
+            (acc, event) => acc + ((event.assistance ? event.assistance : event.estimate) / event.capacity) * 100, 0
+          ) / sortByCategory.length)
+          .toFixed(2);
+
+        outputArray.push({
+          event: item,
+          revenues: revenuesPerCategory,
+          percentage: percentageOfAssistance,
+        });
+      })
+
+      return outputArray;
+    },
+  },
+
+  created() {
+    this.fetchData();
+  },
+
   template: `
-    <header class="p-2">
+  <header class="p-2">
     <nav class="navbar navbar-expand-sm bg-body-tertiary">
       <div class="container-fluid">
         <div class="row w-100 g-0 align-items-center justify-content-between">
@@ -87,8 +223,85 @@ const App = createApp({
   <main>
 
     <!-- Este es el elemento dentro del cual voy a generar las tablas de forma dinamica -->
-    <div class="container-fluid" id="tablesContainer"></div>
+    <div class="container-fluid" v-if="this.fetchedData.events">
+    
+      <div class="row w-100">
+        <div class="col table-responsive">
+          <table class="table table-bordered shadow-sm">
+            <thead>
+              <tr class="table-secondary">
+                <th colspan="3" scope="row">Event Statistics</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="col-4">Event with highest % of assistance</td>
+                <td class="col-4">Event with lowest % of assistance</td>
+                <td class="col-4">Event with largest capacity</td>
+              </tr>
+              <tr>
+                <td class="text-secondary">{{this.highestPercentageOfAssistance}}</td>
+                <td class="text-secondary">{{this.lowestPercentageOfAssistance}}</td>
+                <td class="text-secondary">{{this.eventWithLargestCapacity}}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
+      <div class="row w-100">
+        <div class="col table-responsive">
+          <table class="table table-bordered shadow-sm">
+            <thead>
+              <tr class="table-secondary">
+                <th colspan="3" scope="row">Past Events statistics by category</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="col-4">Categories</td>
+                <td class="col-4">Revenues</td>
+                <td class="col-4">Percentage of assistance</td>
+              </tr>
+              <tr v-for="(object, index) in this.setPastEventsTable" :key="index">
+                <td class="text-secondary">{{object.event}}</td>
+                <td class="text-secondary">$ {{object.revenues.toLocaleString()}}</td>
+                <td class="text-secondary">{{object.percentage}} %</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="row w-100">
+        <div class="col table-responsive">
+          <table class="table table-bordered shadow-sm">
+            <thead>
+              <tr class="table-secondary">
+                <th colspan="3" scope="row">Upcoming Events statistics by category</th>
+              </tr>
+            </thead>
+            <tbody id="thirdTableBody">
+              <tr>
+                <td class="col-4">Categories</td>
+                <td class="col-4">Revenues (estimated)</td>
+                <td class="col-4">Percentage of assistance (estimated)</td>
+              </tr>
+              <tr v-for="(object, index) in this.setUpcomingEventsTable" :key="index">
+                <td class="text-secondary">{{object.event}}</td>
+                <td class="text-secondary">$ {{object.revenues.toLocaleString()}}</td>
+                <td class="text-secondary">{{object.percentage}} %</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="container-fluid p-2" v-else>
+      <h2 v-for="(value, key, index) in this.fetchedData" :key="index" class="text-center text-danger">{{ key }} {{ value }}</h2>
+    </div>
   </main>
 
   <footer class="p-2">

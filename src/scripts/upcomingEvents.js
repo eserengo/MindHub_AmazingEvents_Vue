@@ -164,11 +164,11 @@ const App = createApp({
 
     <section id="carousel" class="carousel slide position-relative">
       <div class="carousel-inner">
-        <figure class="carousel-item active">
+        <figure class="carousel-item">
           <img src="../assets/optional_banner_1.jpg" class="d-block w-100 object-fit-cover"
             alt="An image of a sushi dish" style="max-height: 320px;">
         </figure>
-        <figure class="carousel-item">
+        <figure class="carousel-item active">
           <img src="../assets/optional_banner_2.jpg" class="d-block w-100 object-fit-cover"
             alt="An image of a theather" style="max-height: 320px;">
         </figure>
@@ -242,6 +242,7 @@ const App = createApp({
         class="row w-100" v-html="this.createEventsCards(this.filteredData)"></div>
 
       <div v-else class="row w-100" v-html="this.createEventsCards(this.searchedData)"></div>
+
     </div>
 
     <div v-else class="container-fluid p-2">

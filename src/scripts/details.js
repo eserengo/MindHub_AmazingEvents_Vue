@@ -8,6 +8,7 @@ const App = createApp({
       params: new URLSearchParams(location.search),
     }
   },
+
   methods: {
     async fetchData() {
       try {
@@ -22,9 +23,11 @@ const App = createApp({
       }
     },
   },
+
   created() {
     this.fetchData()
   },
+
   template: `
     <header class="p-2">
     <nav class="navbar navbar-expand-sm bg-body-tertiary">
